@@ -18,6 +18,17 @@ echo "Copying configuration files..."
 [ -f "$GEMINI_HOME/config.json" ] && cp "$GEMINI_HOME/config.json" "$BUNDLE_DIR/"
 [ -f "$GEMINI_HOME/extensions/extension-enablement.json" ] && cp "$GEMINI_HOME/extensions/extension-enablement.json" "$BUNDLE_DIR/extensions/"
 
+# Sanitize config.json (remove API Key)
+if [ -f "$BUNDLE_DIR/config.json" ]; then
+    echo "Sanitizing config.json (removing potential API keys)..."
+    sed -i 's/"\([^"]*API_KEY[^"]*\)": "[^"]*"/"\1": ""/I' "$BUNDLE_DIR/config.json"
+    sed -i 's/"\([^"]*api_key[^"]*\)": "[^"]*"/"\1": ""/I' "$BUNDLE_DIR/config.json"
+    sed -i 's/"\([^"]*apiKey[^"]*\)": "[^"]*"/"\1": ""/I' "$BUNDLE_DIR/config.json"
+    # Replace values for keys matching *API_KEY*, *api_key*, or *apiKey*
+    # We use sed to replace the value part.
+    # Assuming "key": "value" format.
+fi
+
 # Copy extensions (excluding incompatible ones and large deps)
 echo "Copying extensions (excluding ComputerUse)..."
 for ext in "$GEMINI_HOME/extensions"/*; do
@@ -64,6 +75,53 @@ if [ -f "$BUNDLE_DIR/extensions/extension-enablement.json" ]; then
         sed -i ':a;N;$!ba;s/,\s*}/}/g' "$BUNDLE_DIR/extensions/extension-enablement.json"
     fi
 fi
+
+
+# Create API setup script
+cat > "$BUNDLE_DIR/set_api_key.sh" << 'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+
+CONFIG_FILE="$HOME/.gemini/config.json"
+
+echo ""
+echo "--------------------------------------------------"
+echo "🔑 Gemini API Key Setup"
+echo "--------------------------------------------------"
+echo "To use Gemini CLI, you need to provide your API Key."
+echo "If you don't have one, get it from: https://aistudio.google.com/app/apikey"
+echo ""
+echo -n "Paste your API Key here: "
+read -r API_KEY
+
+if [ -z "$API_KEY" ]; then
+    echo "❌ API Key cannot be empty. Please run ./set_api_key.sh again."
+    exit 1
+fi
+
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "❌ Config file not found at $CONFIG_FILE"
+    exit 1
+fi
+
+echo "Updating configuration..."
+
+# Update GEMINI_API_KEY
+if grep -q "GEMINI_API_KEY" "$CONFIG_FILE"; then
+    sed -i "s/\"GEMINI_API_KEY\": \".*\"/\"GEMINI_API_KEY\": \"$API_KEY\"/" "$CONFIG_FILE"
+    echo "✅ Updated GEMINI_API_KEY"
+elif grep -q "apiKey" "$CONFIG_FILE"; then
+    sed -i "s/\"apiKey\": \".*\"/\"apiKey\": \"$API_KEY\"/" "$CONFIG_FILE"
+    echo "✅ Updated apiKey"
+else
+    # If key doesn't exist, we might need to add it or fail.
+    # For now, let's assume it exists because we copied the config file.
+    echo "⚠️  Could not find GEMINI_API_KEY or apiKey field in config.json."
+    echo "   You may need to manually add it."
+fi
+
+echo "--------------------------------------------------"
+EOF
+chmod +x "$BUNDLE_DIR/set_api_key.sh"
 
 # Create installation script INSIDE the bundle
 cat > "$BUNDLE_DIR/install.sh" << 'EOF'
@@ -126,6 +184,11 @@ done
 echo "--------------------------------------------------"
 echo "Setup complete! You can now use 'gemini' in Termux."
 echo "Note: If 'gemini' command is not found, ensure the gemini-cli-termux package is installed."
+
+# Prompt for API Key
+if [ -f "./set_api_key.sh" ]; then
+    ./set_api_key.sh
+fi
 EOF
 
 chmod +x "$BUNDLE_DIR/install.sh"
