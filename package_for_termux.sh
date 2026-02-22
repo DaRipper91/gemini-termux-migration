@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Configuration
-GEMINI_HOME="$HOME/.gemini"
-BUNDLE_DIR="$HOME/.gemini/tmp/termux_bundle"
-OUTPUT_FILE="$HOME/gemini-termux-bundle.tar.gz"
+GEMINI_HOME="${GEMINI_HOME:-$HOME/.gemini}"
+BUNDLE_DIR="${BUNDLE_DIR:-$GEMINI_HOME/tmp/termux_bundle}"
+OUTPUT_FILE="${OUTPUT_FILE:-$HOME/gemini-termux-bundle.tar.gz}"
 
 echo "Creating Termux migration bundle..."
 
