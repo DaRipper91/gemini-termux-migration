@@ -21,9 +21,10 @@ echo "Copying configuration files..."
 # Sanitize config.json (remove API Key)
 if [ -f "$BUNDLE_DIR/config.json" ]; then
     echo "Sanitizing config.json (removing potential API keys)..."
-    sed -i 's/"\([^"]*API_KEY[^"]*\)": "[^"]*"/"\1": ""/I' "$BUNDLE_DIR/config.json"
-    sed -i 's/"\([^"]*api_key[^"]*\)": "[^"]*"/"\1": ""/I' "$BUNDLE_DIR/config.json"
-    sed -i 's/"\([^"]*apiKey[^"]*\)": "[^"]*"/"\1": ""/I' "$BUNDLE_DIR/config.json"
+    # Combine sed commands to reduce I/O and process overhead
+    sed -i -e 's/"\([^"]*API_KEY[^"]*\)": "[^"]*"/"\1": ""/I' \
+           -e 's/"\([^"]*api_key[^"]*\)": "[^"]*"/"\1": ""/I' \
+           -e 's/"\([^"]*apiKey[^"]*\)": "[^"]*"/"\1": ""/I' "$BUNDLE_DIR/config.json"
     # Replace values for keys matching *API_KEY*, *api_key*, or *apiKey*
     # We use sed to replace the value part.
     # Assuming "key": "value" format.
@@ -69,8 +70,8 @@ if [ -f "$BUNDLE_DIR/extensions/extension-enablement.json" ]; then
         jq 'del(.["ComputerUse"]) | del(.["adb-control-gemini"])' "$BUNDLE_DIR/extensions/extension-enablement.json" > "$BUNDLE_DIR/extensions/extension-enablement.json.tmp" && mv "$BUNDLE_DIR/extensions/extension-enablement.json.tmp" "$BUNDLE_DIR/extensions/extension-enablement.json"
     else
         # Basic removal via sed (assuming standard JSON formatting)
-        sed -i '/"ComputerUse":/d' "$BUNDLE_DIR/extensions/extension-enablement.json"
-        sed -i '/"adb-control-gemini":/d' "$BUNDLE_DIR/extensions/extension-enablement.json"
+        # We combine the deletions to reduce I/O and process creation overhead.
+        sed -i -e '/"ComputerUse":/d' -e '/"adb-control-gemini":/d' "$BUNDLE_DIR/extensions/extension-enablement.json"
         # Fix potential trailing comma issues (simple approach)
         sed -i ':a;N;$!ba;s/,\s*}/}/g' "$BUNDLE_DIR/extensions/extension-enablement.json"
     fi
