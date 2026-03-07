@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Configuration
-GEMINI_HOME="$HOME/.gemini"
-BUNDLE_DIR="$HOME/.gemini/tmp/termux_bundle"
-OUTPUT_FILE="$HOME/gemini-termux-bundle.tar.gz"
+GEMINI_HOME="${GEMINI_HOME:-$HOME/.gemini}"
+BUNDLE_DIR="${BUNDLE_DIR:-$GEMINI_HOME/tmp/termux_bundle}"
+OUTPUT_FILE="${OUTPUT_FILE:-$HOME/gemini-termux-bundle.tar.gz}"
 
 echo "Creating Termux migration bundle..."
 
@@ -21,9 +21,9 @@ echo "Copying configuration files..."
 # Sanitize config.json (remove API Key)
 if [ -f "$BUNDLE_DIR/config.json" ]; then
     echo "Sanitizing config.json (removing potential API keys)..."
-    sed -i 's/"\([^"]*API_KEY[^"]*\)": "[^"]*"/"\1": ""/I' "$BUNDLE_DIR/config.json"
-    sed -i 's/"\([^"]*api_key[^"]*\)": "[^"]*"/"\1": ""/I' "$BUNDLE_DIR/config.json"
-    sed -i 's/"\([^"]*apiKey[^"]*\)": "[^"]*"/"\1": ""/I' "$BUNDLE_DIR/config.json"
+    sed -i 's/"\([^"]*API_KEY[^"]*\)"[[:space:]]*:[[:space:]]*"[^"]*"/"\1": ""/Ig' "$BUNDLE_DIR/config.json"
+    sed -i 's/"\([^"]*api_key[^"]*\)"[[:space:]]*:[[:space:]]*"[^"]*"/"\1": ""/Ig' "$BUNDLE_DIR/config.json"
+    sed -i 's/"\([^"]*apiKey[^"]*\)"[[:space:]]*:[[:space:]]*"[^"]*"/"\1": ""/Ig' "$BUNDLE_DIR/config.json"
     # Replace values for keys matching *API_KEY*, *api_key*, or *apiKey*
     # We use sed to replace the value part.
     # Assuming "key": "value" format.
@@ -107,10 +107,10 @@ echo "Updating configuration..."
 
 # Update GEMINI_API_KEY
 if grep -q "GEMINI_API_KEY" "$CONFIG_FILE"; then
-    sed -i "s/\"GEMINI_API_KEY\": \".*\"/\"GEMINI_API_KEY\": \"$API_KEY\"/" "$CONFIG_FILE"
+    sed -i "s/\"GEMINI_API_KEY\"[[:space:]]*:[[:space:]]*\".*\"/\"GEMINI_API_KEY\": \"$API_KEY\"/" "$CONFIG_FILE"
     echo "✅ Updated GEMINI_API_KEY"
 elif grep -q "apiKey" "$CONFIG_FILE"; then
-    sed -i "s/\"apiKey\": \".*\"/\"apiKey\": \"$API_KEY\"/" "$CONFIG_FILE"
+    sed -i "s/\"apiKey\"[[:space:]]*:[[:space:]]*\".*\"/\"apiKey\": \"$API_KEY\"/" "$CONFIG_FILE"
     echo "✅ Updated apiKey"
 else
     # If key doesn't exist, we might need to add it or fail.
