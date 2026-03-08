@@ -104,4 +104,19 @@ if ! grep -q "ValidExtension" "$MOCK_BUNDLE_DIR/extensions/extension-enablement.
     exit 1
 fi
 
+# 6. Verify path replacement in install.sh
+if grep -q "__HOST_HOME__" "$MOCK_BUNDLE_DIR/install.sh"; then
+    echo "FAILED: __HOST_HOME__ placeholder still present in install.sh"
+    exit 1
+fi
+
+# Use the exported MOCK_HOME for verification
+EXPECTED_SED_CMD="s|$HOME|\$HOME|g"
+if ! grep -q "$EXPECTED_SED_CMD" "$MOCK_BUNDLE_DIR/install.sh"; then
+    echo "FAILED: install.sh does not contain the correct sed command for path replacement"
+    echo "Expected: $EXPECTED_SED_CMD"
+    grep "sed -i" "$MOCK_BUNDLE_DIR/install.sh"
+    exit 1
+fi
+
 echo "SUCCESS: All tests passed!"
