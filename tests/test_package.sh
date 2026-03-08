@@ -104,4 +104,32 @@ if ! grep -q "ValidExtension" "$MOCK_BUNDLE_DIR/extensions/extension-enablement.
     exit 1
 fi
 
+# 6. Verify set_api_key.sh
+if [ ! -f "$MOCK_BUNDLE_DIR/set_api_key.sh" ]; then
+    echo "FAILED: set_api_key.sh missing from bundle"
+    exit 1
+fi
+if [ ! -x "$MOCK_BUNDLE_DIR/set_api_key.sh" ]; then
+    echo "FAILED: set_api_key.sh is not executable"
+    exit 1
+fi
+if ! head -n 1 "$MOCK_BUNDLE_DIR/set_api_key.sh" | grep -q "#!/data/data/com.termux/files/usr/bin/bash"; then
+    echo "FAILED: set_api_key.sh has incorrect shebang"
+    exit 1
+fi
+
+# 7. Verify install.sh
+if [ ! -f "$MOCK_BUNDLE_DIR/install.sh" ]; then
+    echo "FAILED: install.sh missing from bundle"
+    exit 1
+fi
+if [ ! -x "$MOCK_BUNDLE_DIR/install.sh" ]; then
+    echo "FAILED: install.sh is not executable"
+    exit 1
+fi
+if ! head -n 1 "$MOCK_BUNDLE_DIR/install.sh" | grep -q "#!/data/data/com.termux/files/usr/bin/bash"; then
+    echo "FAILED: install.sh has incorrect shebang"
+    exit 1
+fi
+
 echo "SUCCESS: All tests passed!"
