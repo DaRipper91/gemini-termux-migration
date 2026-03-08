@@ -4,6 +4,7 @@
 GEMINI_HOME="${GEMINI_HOME:-$HOME/.gemini}"
 BUNDLE_DIR="${BUNDLE_DIR:-$GEMINI_HOME/tmp/termux_bundle}"
 OUTPUT_FILE="${OUTPUT_FILE:-$HOME/gemini-termux-bundle.tar.gz}"
+HOST_HOME="$HOME"
 
 echo "Creating Termux migration bundle..."
 
@@ -155,8 +156,8 @@ cp -r extensions/* "$GEMINI_HOME/extensions/"
 
 # 4. Fix Paths
 echo "Updating configuration paths..."
-# Replace /home/daripper with $HOME in all relevant config files
-find "$GEMINI_HOME" -type f \( -name "*.json" -o -name "*.md" -o -name "*.toml" \) -exec sed -i "s|/home/daripper|$HOME|g" {} +
+# Replace __HOST_HOME__ with $HOME in all relevant config files
+find "$GEMINI_HOME" -type f \( -name "*.json" -o -name "*.md" -o -name "*.toml" \) -exec sed -i "s|__HOST_HOME__|$HOME|g" {} +
 
 # 5. Install Extension Dependencies
 echo "Installing extension dependencies..."
@@ -190,6 +191,9 @@ if [ -f "./set_api_key.sh" ]; then
     ./set_api_key.sh
 fi
 EOF
+
+# Inject the host's actual home path into the generated install.sh
+sed -i "s|__HOST_HOME__|$HOST_HOME|g" "$BUNDLE_DIR/install.sh"
 
 chmod +x "$BUNDLE_DIR/install.sh"
 
