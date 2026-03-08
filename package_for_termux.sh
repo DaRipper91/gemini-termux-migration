@@ -22,12 +22,10 @@ echo "Copying configuration files..."
 # Sanitize config.json (remove API Key)
 if [ -f "$BUNDLE_DIR/config.json" ]; then
     echo "Sanitizing config.json (removing potential API keys)..."
-    sed -i 's/"\([^"]*API_KEY[^"]*\)"[[:space:]]*:[[:space:]]*"[^"]*"/"\1": ""/Ig' "$BUNDLE_DIR/config.json"
-    sed -i 's/"\([^"]*api_key[^"]*\)"[[:space:]]*:[[:space:]]*"[^"]*"/"\1": ""/Ig' "$BUNDLE_DIR/config.json"
-    sed -i 's/"\([^"]*apiKey[^"]*\)"[[:space:]]*:[[:space:]]*"[^"]*"/"\1": ""/Ig' "$BUNDLE_DIR/config.json"
-    # Replace values for keys matching *API_KEY*, *api_key*, or *apiKey*
-    # We use sed to replace the value part.
-    # Assuming "key": "value" format.
+    # Combine sed commands to reduce I/O and process overhead, with improved regex for whitespace
+    sed -i -e 's/"\([^"\\]*API_KEY[^"\\]*\)"[[:space:]]*:[[:space:]]*"[^"]*"/"\1": ""/Ig' \
+           -e 's/"\([^"\\]*api_key[^"\\]*\)"[[:space:]]*:[[:space:]]*"[^"]*"/"\1": ""/Ig' \
+           -e 's/"\([^"\\]*apiKey[^"\\]*\)"[[:space:]]*:[[:space:]]*"[^"]*"/"\1": ""/Ig' "$BUNDLE_DIR/config.json"
 fi
 
 # Copy extensions (excluding incompatible ones and large deps)
@@ -66,12 +64,13 @@ done
 if [ -f "$BUNDLE_DIR/extensions/extension-enablement.json" ]; then
     echo "Updating extension-enablement.json..."
     # Use jq if available, otherwise simple sed/grep (risky for JSON but sufficient for simple removal)
-    if command -v jq &> /dev/null; then
+    if command -v jq &> /dev/null;
+    then
         jq 'del(.["ComputerUse"]) | del(.["adb-control-gemini"])' "$BUNDLE_DIR/extensions/extension-enablement.json" > "$BUNDLE_DIR/extensions/extension-enablement.json.tmp" && mv "$BUNDLE_DIR/extensions/extension-enablement.json.tmp" "$BUNDLE_DIR/extensions/extension-enablement.json"
     else
         # Basic removal via sed (assuming standard JSON formatting)
-        sed -i '/"ComputerUse":/d' "$BUNDLE_DIR/extensions/extension-enablement.json"
-        sed -i '/"adb-control-gemini":/d' "$BUNDLE_DIR/extensions/extension-enablement.json"
+        # We combine the deletions to reduce I/O and process creation overhead.
+        sed -i -e '/"ComputerUse":/d' -e '/"adb-control-gemini":/d' "$BUNDLE_DIR/extensions/extension-enablement.json"
         # Fix potential trailing comma issues (simple approach)
         sed -i ':a;N;$!ba;s/,\s*}/}/g' "$BUNDLE_DIR/extensions/extension-enablement.json"
     fi
@@ -157,7 +156,7 @@ cp -r extensions/* "$GEMINI_HOME/extensions/"
 # 4. Fix Paths
 echo "Updating configuration paths..."
 # Replace __HOST_HOME__ with $HOME in all relevant config files
-find "$GEMINI_HOME" -type f \( -name "*.json" -o -name "*.md" -o -name "*.toml" \) -exec sed -i "s|__HOST_HOME__|$HOME|g" {} +
+find "$GEMINI_HOME" -type f \( -name "*.json" -o -name "*.md" -o -name "*.toml" \) -exec sed -i "s|__HOST_HOME__|$HOME|g" {} + 
 
 # 5. Install Extension Dependencies
 echo "Installing extension dependencies..."
