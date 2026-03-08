@@ -105,18 +105,55 @@ fi
 
 echo "Updating configuration..."
 
-# Update GEMINI_API_KEY
-if grep -q "GEMINI_API_KEY" "$CONFIG_FILE"; then
-    sed -i "s/\"GEMINI_API_KEY\"[[:space:]]*:[[:space:]]*\".*\"/\"GEMINI_API_KEY\": \"$API_KEY\"/" "$CONFIG_FILE"
-    echo "✅ Updated GEMINI_API_KEY"
-elif grep -q "apiKey" "$CONFIG_FILE"; then
-    sed -i "s/\"apiKey\"[[:space:]]*:[[:space:]]*\".*\"/\"apiKey\": \"$API_KEY\"/" "$CONFIG_FILE"
-    echo "✅ Updated apiKey"
+# Use jq if available for safe JSON manipulation
+if command -v jq &> /dev/null; then
+    if jq -e 'has("GEMINI_API_KEY")' "$CONFIG_FILE" >/dev/null; then
+        jq --arg key "$API_KEY" '.GEMINI_API_KEY = $key' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+        echo "✅ Updated GEMINI_API_KEY (via jq)"
+    elif jq -e 'has("apiKey")' "$CONFIG_FILE" >/dev/null; then
+        jq --arg key "$API_KEY" '.apiKey = $key' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+        echo "✅ Updated apiKey (via jq)"
+    else
+        echo "⚠️  Could not find GEMINI_API_KEY or apiKey field in config.json."
+    fi
+# Fallback to python3
+elif command -v python3 &> /dev/null; then
+    API_KEY="$API_KEY" CONFIG_FILE="$CONFIG_FILE" python3 -c '
+import json, os, sys
+config_file = os.environ.get("CONFIG_FILE")
+api_key = os.environ.get("API_KEY")
+if not config_file or not api_key:
+    sys.exit(1)
+with open(config_file, "r") as f:
+    data = json.load(f)
+if "GEMINI_API_KEY" in data:
+    data["GEMINI_API_KEY"] = api_key
+    print("✅ Updated GEMINI_API_KEY (via python)")
+elif "apiKey" in data:
+    data["apiKey"] = api_key
+    print("✅ Updated apiKey (via python)")
+else:
+    print("⚠️  Could not find GEMINI_API_KEY or apiKey field in config.json.")
+    sys.exit(0)
+with open(config_file + ".tmp", "w") as f:
+    json.dump(data, f, indent=2)
+os.replace(config_file + ".tmp", config_file)
+'
+# Last resort: sed with careful escaping
 else
-    # If key doesn't exist, we might need to add it or fail.
-    # For now, let's assume it exists because we copied the config file.
-    echo "⚠️  Could not find GEMINI_API_KEY or apiKey field in config.json."
-    echo "   You may need to manually add it."
+    echo "⚠️  Neither jq nor python3 found. Falling back to sed (less robust)..."
+    # Escape for JSON and sed: 1. Backslashes 2. Double quotes 3. Ampersand (sed special char) 4. Pipe (sed delimiter)
+    # We use | as sed delimiter
+    API_KEY_ESC=$(echo "$API_KEY" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/&/\\\&/g' -e 's/|/\\|/g')
+    if grep -q "GEMINI_API_KEY" "$CONFIG_FILE"; then
+        sed -i "s|\"GEMINI_API_KEY\"[[:space:]]*:[[:space:]]*\".*\"|\"GEMINI_API_KEY\": \"$API_KEY_ESC\"|" "$CONFIG_FILE"
+        echo "✅ Updated GEMINI_API_KEY (via sed)"
+    elif grep -q "apiKey" "$CONFIG_FILE"; then
+        sed -i "s|\"apiKey\"[[:space:]]*:[[:space:]]*\".*\"|\"apiKey\": \"$API_KEY_ESC\"|" "$CONFIG_FILE"
+        echo "✅ Updated apiKey (via sed)"
+    else
+        echo "⚠️  Could not find GEMINI_API_KEY or apiKey field in config.json."
+    fi
 fi
 
 echo "--------------------------------------------------"
@@ -137,7 +174,7 @@ echo "Setting up Gemini environment in Termux..."
 # 1. Install Dependencies
 echo "Installing system packages..."
 pkg update -y
-pkg install -y git nodejs-lts python vim tmux android-tools build-essential binutils
+pkg install -y git nodejs-lts python vim tmux android-tools build-essential binutils jq
 # Check for tur-repo and opencv (optional but helpful)
 # pkg install -y tur-repo && pkg install -y python-opencv || echo "OpenCV setup skipped (manual install may be needed)"
 
